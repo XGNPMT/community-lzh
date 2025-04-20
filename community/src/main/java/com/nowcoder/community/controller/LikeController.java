@@ -1,5 +1,6 @@
 package com.nowcoder.community.controller;
 
+import ch.qos.logback.core.joran.action.AppenderRefAction;
 import com.nowcoder.community.entity.Event;
 import com.nowcoder.community.entity.User;
 import com.nowcoder.community.event.EventProducer;
@@ -7,7 +8,9 @@ import com.nowcoder.community.service.LikeService;
 import com.nowcoder.community.utils.CommunityConstant;
 import com.nowcoder.community.utils.CommunityUtil;
 import com.nowcoder.community.utils.HostHolder;
+import com.nowcoder.community.utils.RedisKeyUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,11 +23,14 @@ import java.util.Map;
 @RequestMapping
 public class LikeController implements CommunityConstant {
     @Autowired
-    LikeService likeService;
+    private LikeService likeService;
     @Autowired
-    HostHolder hostHolder;
+    private HostHolder hostHolder;
     @Autowired
     private EventProducer eventProducer;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     @PostMapping("/like")
     @ResponseBody
@@ -48,6 +54,12 @@ public class LikeController implements CommunityConstant {
                     .setTopic(TOPIC_LIKE)
                     .setData("postId",discussPostId);
             eventProducer.fireEvent(event);
+        }
+
+        if(entityType==ENTITY_TYPE_POST){
+            //计算帖子分数
+            String redisKey = RedisKeyUtil.getPostKey();
+            redisTemplate.opsForSet().add(redisKey,discussPostId);
         }
 
 

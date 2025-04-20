@@ -9,7 +9,9 @@ import com.nowcoder.community.service.UserService;
 import com.nowcoder.community.utils.CommunityConstant;
 import com.nowcoder.community.utils.CommunityUtil;
 import com.nowcoder.community.utils.HostHolder;
+import com.nowcoder.community.utils.RedisKeyUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -29,13 +31,16 @@ public class DiscussPostController implements CommunityConstant {
     private UserService userService;
 
     @Autowired
-    CommentService commentService;
+    private CommentService commentService;
 
     @Autowired
-    LikeService likeService;
+    private LikeService likeService;
 
     @Autowired
-    EventProducer eventProducer;
+    private EventProducer eventProducer;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     @PostMapping("/add")
     @ResponseBody
@@ -58,6 +63,12 @@ public class DiscussPostController implements CommunityConstant {
                 .setEntityId(discussPost.getId())
                 .setEntityType(ENTITY_TYPE_POST);
         eventProducer.fireEvent(event);
+
+        //计算帖子分数
+        String redisKey = RedisKeyUtil.getPostKey();
+        //防止点赞重复，放到set里面
+        redisTemplate.opsForSet().add(redisKey,discussPost.getId());
+
 
         return CommunityUtil.getJSONString(200,"发布成功！");
 
@@ -157,6 +168,11 @@ public class DiscussPostController implements CommunityConstant {
                 .setEntityType(ENTITY_TYPE_POST)
                 .setEntityId(postId);
         eventProducer.fireEvent(event);
+
+        //计算帖子分数
+        String redisKey = RedisKeyUtil.getPostKey();
+        redisTemplate.opsForSet().add(redisKey,postId);
+
         return CommunityUtil.getJSONString(200);
     }
 
